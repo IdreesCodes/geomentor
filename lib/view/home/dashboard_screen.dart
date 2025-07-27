@@ -67,6 +67,7 @@ class DashboardScreen extends StatelessWidget {
             // White content with rounded top corners
             Container(
               width: double.infinity,
+              margin: const EdgeInsets.only(top: 0),
               decoration: const BoxDecoration(
                 color: Color(0xFFF7F7FA),
                 borderRadius: BorderRadius.only(
@@ -75,151 +76,151 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
+                padding: const EdgeInsets.fromLTRB(18, 24, 18, 0),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Overview
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(15, 32, 15, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+                    // Overview title and date
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Overview',
+                          style: AppTextStyles.subhead.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Row(
+                            children: const [
                               Text(
-                                'Overview',
-                                style: AppTextStyles.subhead.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 22,
+                                'July 2025',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 15,
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 7,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                child: Row(
-                                  children: const [
-                                    Text(
-                                      'July 2025',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      size: 20,
-                                    ),
-                                  ],
-                                ),
+                              Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Stats row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _StatColumn(label: 'Presence', value: '20'),
+                        _VerticalDivider(),
+                        _StatColumn(label: 'Absence', value: '3'),
+                        _VerticalDivider(),
+                        _StatColumn(label: 'Lateness', value: '1.5h'),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Timeline card
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          top: 18,
+                          right: 12,
+                          left: 12,
+                          bottom: 12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Saturday 26 July 2025',
+                              style: AppTextStyles.body.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                color: Colors.black,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 28),
-                          // Stats row with dividers
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _StatColumn(label: 'Presence', value: '20'),
-                              _VerticalDivider(),
-                              _StatColumn(label: 'Absence', value: '3'),
-                              _VerticalDivider(),
-                              _StatColumn(label: 'Lateness', value: '1.5h'),
-                            ],
-                          ),
-                          const SizedBox(height: 28),
-                          // Timeline Card
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                top: 15,
-                                right: 15,
-                                left: 15,
+                            const SizedBox(height: 12),
+                            // Timeline items
+                            _Timeline(),
+                            const SizedBox(height: 12),
+                            // Overtime card
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFF7F7FA),
+                                  width: 2,
+                                ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Saturday 26 July 2025',
-                                    style: AppTextStyles.body.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 18),
-                                  _Timeline(),
-                                  const SizedBox(height: 18),
-                                  // Overtime
-                                  Container(
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF7F7FA),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 2,
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Overtime',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text(
-                                          'Overtime',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      const Text(
+                                        'Late: 10 Minutes',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w400,
                                         ),
-                                        Row(
-                                          children: [
-                                            const Text(
-                                              'Late: 10 Minutes',
-                                              style: TextStyle(
-                                                color: Colors.red,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            SvgPicture.asset(
-                                              'assets/svg/star.svg',
-                                              width: 20,
-                                              height: 20,
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      const SizedBox(width: 8),
+                                      SvgPicture.asset(
+                                        'assets/svg/business-time.svg',
+                                        width: 20,
+                                        height: 20,
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 32),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -276,10 +277,6 @@ class _Timeline extends StatelessWidget {
           status: 'Late: 10 Minutes',
           statusColor: Colors.red,
           svg: 'assets/svg/location.svg',
-          isActive: true,
-          statusBg: const Color(0xFFFFE5E5),
-          statusTextColor: Colors.red,
-          trailingSvg: 'assets/svg/location.svg',
         ),
         _TimelineItem(
           time: '30:00:04',
@@ -287,25 +284,25 @@ class _Timeline extends StatelessWidget {
           subtitle: 'Start 12:05 PM',
           status: 'On Going...',
           statusColor: AppColors.secondary,
-          svg: 'assets/svg/heartbreak.svg',
-          isActive: true,
+          svg: 'assets/svg/coffee_cup.svg',
           statusBg: Color(0xFF8F5BFF),
           statusTextColor: Colors.white,
-          trailingSvg: 'assets/svg/heartbreak.svg',
         ),
         _TimelineItem(
           time: '13:00 PM',
           title: 'After Break',
-          subtitle: 'It is now 12:35 PM',
+          subtitle: 'After schedule',
           svg: 'assets/svg/heartbreak.svg',
-          trailingSvg: 'assets/svg/heartbreak.svg',
+          extraDetail:
+              'It is now 12:35 PM', // Add this field to display below the card title
         ),
         _TimelineItem(
           time: '17:00 PM',
           title: 'Check Out',
-          subtitle: 'It is now 12:35 PM',
+          subtitle: 'Check Schedule',
           svg: 'assets/svg/cart.svg',
-          trailingSvg: 'assets/svg/cart.svg',
+          extraDetail:
+              'It is now 12:35 PM', // Add this field to display below the card title
         ),
       ],
     );
@@ -323,6 +320,7 @@ class _TimelineItem extends StatelessWidget {
   final Color? statusBg;
   final Color? statusTextColor;
   final String? trailingSvg;
+  final String? extraDetail;
 
   const _TimelineItem({
     required this.time,
@@ -335,116 +333,149 @@ class _TimelineItem extends StatelessWidget {
     this.statusBg,
     this.statusTextColor,
     this.trailingSvg,
+    this.extraDetail,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isBreak = title == 'Break';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Timeline dot and line
-          Column(
+          // Left group: dot/line and time/subtitle
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: isActive ? AppColors.secondary : AppColors.background,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-              ),
-              Container(width: 2, height: 40, color: Colors.grey[300]),
-            ],
-          ),
-          const SizedBox(width: 12),
-          // Time and subtitle
-          SizedBox(
-            width: 90,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  time,
-                  style: AppTextStyles.subhead.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.black,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: AppTextStyles.body.copyWith(
-                    fontSize: 15,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Event card
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              // Dot and vertical line
+              Column(
                 children: [
-                  // Title and status
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          title,
-                          style: AppTextStyles.subhead.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Colors.black,
-                          ),
-                        ),
-                        if (status != null)
-                          Container(
-                            margin: const EdgeInsets.only(top: 6),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusColor ?? Colors.red,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              status!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                      ],
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? AppColors.secondary
+                          : AppColors.background,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
                     ),
                   ),
-                  SvgPicture.asset(svg, width: 24, height: 24),
+                  Container(
+                    margin: const EdgeInsets.only(left: 5),
+                    width: 2,
+                    height: 40,
+                    color: Colors.grey[300],
+                  ),
                 ],
               ),
+              const SizedBox(width: 8),
+              // Time and subtitle
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    time,
+                    style: AppTextStyles.subhead.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          Container(
+            width: 170, // Increased width
+            margin: const EdgeInsets.only(bottom: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isBreak
+                  ? AppColors.secondary
+                  : Colors.white, // Purple for Break, white otherwise
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.subhead.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: isBreak
+                            ? Colors.white
+                            : Colors.black, // White text for Break
+                      ),
+                    ),
+                    if (extraDetail != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          extraDetail!,
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    if (status != null)
+                      Container(
+                        margin: const EdgeInsets.only(top: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isBreak
+                              ? Colors.white
+                              : (statusColor ??
+                                    Colors.red), // White chip for Break
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          status!,
+                          style: TextStyle(
+                            color: isBreak
+                                ? AppColors.secondary
+                                : Colors.white, // Purple text for Break
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                SvgPicture.asset(
+                  svg,
+                  width: 18,
+                  height: 18,
+                  color: isBreak ? Colors.white : null, // White icon for Break
+                ),
+              ],
             ),
           ),
         ],
