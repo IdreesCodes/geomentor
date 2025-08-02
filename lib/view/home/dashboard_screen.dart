@@ -1,17 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:dotted_line/dotted_line.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
+import '../../providers/user_profile_provider.dart';
 import 'dart:math' as math;
 import 'dart:async';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh user profile when dashboard loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(userProfileNotifierProvider.notifier).refreshProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
+
+    // Get user profile
+    final userProfileAsync = ref.watch(userProfileNotifierProvider);
+
+    // Get greeting based on time of day
+    String getGreeting() {
+      final hour = DateTime.now().hour;
+      if (hour < 12) {
+        return 'Morning';
+      } else if (hour < 17) {
+        return 'Afternoon';
+      } else {
+        return 'Evening';
+      }
+    }
+
+    // Get user's first name or fallback
+    String getUserName() {
+      return userProfileAsync.when(
+        data: (profile) {
+          print('👤 Dashboard: User profile loaded - ${profile?.fullName}');
+          if (profile?.fullName != null && profile!.fullName!.isNotEmpty) {
+            // Get first name only
+            final firstName = profile.fullName!.split(' ').first;
+            print('👤 Dashboard: Using first name - $firstName');
+            return firstName;
+          }
+          print('👤 Dashboard: No full name found, using fallback');
+          return 'User';
+        },
+        loading: () {
+          print('👤 Dashboard: User profile loading...');
+          return 'User';
+        },
+        error: (error, stack) {
+          print('👤 Dashboard: User profile error - $error');
+          return 'User';
+        },
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -47,12 +103,30 @@ class DashboardScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    'Morning, Shantanu',
-                    style: AppTextStyles.headline.copyWith(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
+                  userProfileAsync.when(
+                    data: (profile) => Text(
+                      '${getGreeting()}, ${getUserName()}',
+                      style: AppTextStyles.headline.copyWith(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    loading: () => Text(
+                      '${getGreeting()}, User',
+                      style: AppTextStyles.headline.copyWith(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    error: (_, __) => Text(
+                      '${getGreeting()}, User',
+                      style: AppTextStyles.headline.copyWith(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),

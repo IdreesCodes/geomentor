@@ -50,12 +50,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Account created successfully! Please check your email to verify your account.',
+                'Account created successfully! Please sign in to continue.',
               ),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
             ),
           );
-          Navigator.of(context).pushReplacementNamed('/dashboard');
+          // Navigate to login screen after successful signup
+          Navigator.of(context).pushReplacementNamed('/login');
         }
       } catch (error) {
         if (mounted) {

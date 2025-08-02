@@ -18,10 +18,13 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile?>> {
 
   Future<void> _loadProfile() async {
     try {
+      print('👤 UserProfileNotifier: Loading user profile...');
       state = const AsyncValue.loading();
       final profile = await _supabaseService.getCurrentUserProfile();
+      print('👤 UserProfileNotifier: Profile loaded - ${profile?.fullName}');
       state = AsyncValue.data(profile);
     } catch (error) {
+      print('❌ UserProfileNotifier: Error loading profile - $error');
       state = AsyncValue.error(error, StackTrace.current);
     }
   }
@@ -37,6 +40,7 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserProfile?>> {
   }
 
   Future<void> refreshProfile() async {
+    print('👤 UserProfileNotifier: Refreshing user profile...');
     await _loadProfile();
   }
 }

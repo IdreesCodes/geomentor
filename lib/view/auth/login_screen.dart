@@ -20,6 +20,15 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Reset auth state when login screen loads to ensure clean state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authNotifierProvider.notifier).resetAuthState();
+    });
+  }
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -33,6 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
+      print('🔐 Login: Starting login process...');
       try {
         await ref
             .read(authNotifierProvider.notifier)
@@ -41,15 +51,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               password: _passwordController.text,
             );
 
+        print('🔐 Login: Login successful, navigating to dashboard...');
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/dashboard');
         }
       } catch (error) {
+        print('❌ Login: Login failed - $error');
         if (mounted) {
+          String errorMessage = 'Login failed';
+
+          if (error.toString().contains('Invalid login credentials')) {
+            errorMessage = 'Invalid email or password';
+          } else if (error.toString().contains('Too many requests')) {
+            errorMessage = 'Too many login attempts. Please try again later';
+          } else {
+            errorMessage = 'Login failed: ${error.toString()}';
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Login failed: ${error.toString()}'),
+              content: Text(errorMessage),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
             ),
           );
         }
@@ -147,7 +170,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           final authState = ref.watch(authNotifierProvider);
                           return PrimaryButton(
                             text: 'Sign In',
-                            onPressed: _handleLogin,
+                            onPressed: authState.isLoading
+                                ? null
+                                : _handleLogin,
                             isLoading: authState.isLoading,
                           );
                         },
