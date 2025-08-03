@@ -224,8 +224,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Container(
               width: double.infinity,
               margin: const EdgeInsets.only(top: 0),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF7F7FA),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(36),
                   topRight: Radius.circular(36),
@@ -272,7 +272,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 25),
                     // Stats row
                     Consumer(
                       builder: (context, ref, child) {
@@ -285,7 +285,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             if (attendanceData == null) {
                               return Row(
                                 mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceAround,
                                 children: [
                                   _StatColumn(label: 'Presence', value: '0'),
                                   _VerticalDivider(),
@@ -297,7 +297,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             }
 
                             return Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 _StatColumn(
                                   label: 'Presence',
