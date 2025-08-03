@@ -39,6 +39,8 @@ dependencies:
   flutter_svg: ^2.0.10
   dotted_line: ^3.2.3
   supabase_flutter: ^2.3.4
+  geolocator: ^13.0.1
+  permission_handler: ^11.3.1
   # Add other essentials as needed
 
 dev_dependencies:

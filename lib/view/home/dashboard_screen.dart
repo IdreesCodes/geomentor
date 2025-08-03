@@ -5,6 +5,11 @@ import 'package:dotted_line/dotted_line.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_text_styles.dart';
 import '../../providers/user_profile_provider.dart';
+import '../../providers/location_provider.dart';
+import '../../providers/attendance_provider.dart';
+import '../../common/widgets/attendance_popup.dart';
+import '../../common/widgets/permission_dialog.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:math' as math;
 import 'dart:async';
 
@@ -20,8 +25,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void initState() {
     super.initState();
     // Refresh user profile when dashboard loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(userProfileNotifierProvider.notifier).refreshProfile();
+      // Initialize location service
+      await ref.read(locationNotifierProvider.notifier).initializeLocation();
+      // Start location monitoring after initialization
+      ref.read(locationNotifierProvider.notifier).startMonitoring();
+      // Load attendance data
+      ref
+          .read(attendanceNotifierProvider.notifier)
+          .loadCurrentMonthAttendance();
+
+      // Set up attendance popup callback
+      ref.read(locationNotifierProvider.notifier).setAttendanceCallback((
+        message,
+      ) {
+        AttendancePopup.show(context, message);
+        // Refresh attendance data after check-in
+        ref
+            .read(attendanceNotifierProvider.notifier)
+            .loadCurrentMonthAttendance();
+        // Force rebuild of the widget
+        setState(() {});
+      });
     });
   }
 
@@ -67,6 +93,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           return 'User';
         },
       );
+    }
+
+    // Get current month and year
+    String _getCurrentMonthYear() {
+      final now = DateTime.now();
+      final months = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ];
+      return '${months[now.month - 1]} ${now.year}';
+    }
+
+    // Get today's date in readable format
+    String _getTodayDate() {
+      final now = DateTime.now();
+      final days = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+      final months = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ];
+      return '${days[now.weekday - 1]} ${now.day} ${months[now.month - 1]} ${now.year}';
     }
 
     return Scaffold(
@@ -137,6 +212,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       fontSize: 17,
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // Manual Location Check Button
+
+                  // Location Status Widget
                 ],
               ),
             ),
@@ -178,9 +258,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: Row(
-                            children: const [
+                            children: [
                               Text(
-                                'July 2025',
+                                _getCurrentMonthYear(),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w500,
                                   fontSize: 15,
@@ -192,17 +272,72 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 14),
                     // Stats row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _StatColumn(label: 'Presence', value: '20'),
-                        _VerticalDivider(),
-                        _StatColumn(label: 'Absence', value: '3'),
-                        _VerticalDivider(),
-                        _StatColumn(label: 'Lateness', value: '1.5h'),
-                      ],
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final attendanceState = ref.watch(
+                          attendanceNotifierProvider,
+                        );
+
+                        return attendanceState.when(
+                          data: (attendanceData) {
+                            if (attendanceData == null) {
+                              return Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _StatColumn(label: 'Presence', value: '0'),
+                                  _VerticalDivider(),
+                                  _StatColumn(label: 'Absence', value: '0'),
+                                  _VerticalDivider(),
+                                  _StatColumn(label: 'Lateness', value: '0m'),
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _StatColumn(
+                                  label: 'Presence',
+                                  value: attendanceData.presentDays.toString(),
+                                ),
+                                _VerticalDivider(),
+                                _StatColumn(
+                                  label: 'Absence',
+                                  value: attendanceData.absentDays.toString(),
+                                ),
+                                _VerticalDivider(),
+                                _StatColumn(
+                                  label: 'Lateness',
+                                  value: attendanceData.formattedLateTime,
+                                ),
+                              ],
+                            );
+                          },
+                          loading: () => Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _StatColumn(label: 'Presence', value: '...'),
+                              _VerticalDivider(),
+                              _StatColumn(label: 'Absence', value: '...'),
+                              _VerticalDivider(),
+                              _StatColumn(label: 'Lateness', value: '...'),
+                            ],
+                          ),
+                          error: (error, stack) => Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _StatColumn(label: 'Presence', value: '0'),
+                              _VerticalDivider(),
+                              _StatColumn(label: 'Absence', value: '0'),
+                              _VerticalDivider(),
+                              _StatColumn(label: 'Lateness', value: '0m'),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 24),
                     // Timeline card
@@ -230,7 +365,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Saturday 26 July 2025',
+                              _getTodayDate(),
                               style: AppTextStyles.body.copyWith(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
@@ -242,55 +377,92 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             _Timeline(),
                             const SizedBox(height: 12),
                             // Overtime card
-                            Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: const Color(0xFFF7F7FA),
-                                  width: 2,
-                                ),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Overtime',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
+                            Consumer(
+                              builder: (context, ref, child) {
+                                return FutureBuilder<Map<String, dynamic>?>(
+                                  future: ref
+                                      .read(attendanceNotifierProvider.notifier)
+                                      .getTodayAttendance(),
+                                  builder: (context, snapshot) {
+                                    final todayAttendance = snapshot.data;
+                                    String lateText = 'No Check-in';
+                                    Color lateColor = Colors.grey;
+
+                                    if (todayAttendance != null &&
+                                        todayAttendance['check_in_time'] !=
+                                            null) {
+                                      final checkInDateTime = DateTime.parse(
+                                        todayAttendance['check_in_time'],
+                                      );
+
+                                      // Use server-calculated lateness from database
+                                      final serverLateMinutes =
+                                          todayAttendance['minutes_late'] ?? 0;
+                                      if (serverLateMinutes > 0) {
+                                        lateText =
+                                            'Late: ${serverLateMinutes} Minutes';
+                                        lateColor = Colors.red;
+                                      } else {
+                                        lateText = 'On Time';
+                                        lateColor = Colors.green;
+                                      }
+                                    }
+
+                                    return Container(
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: const Color(0xFFF7F7FA),
+                                          width: 2,
                                         ),
                                       ),
-                                      const Text(
-                                        'Late: 10 Minutes',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w400,
-                                        ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
                                       ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      const SizedBox(width: 8),
-                                      SvgPicture.asset(
-                                        'assets/svg/business-time.svg',
-                                        width: 20,
-                                        height: 20,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Today\'s Status',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                lateText,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w400,
+                                                  color: lateColor,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Row(
+                                            children: [
+                                              const SizedBox(width: 8),
+                                              SvgPicture.asset(
+                                                'assets/svg/business-time.svg',
+                                                width: 20,
+                                                height: 20,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                                    );
+                                  },
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -440,15 +612,65 @@ class _TimelineState extends State<_Timeline> {
                 // Timeline items
                 Column(
                   children: [
-                    _TimelineItem(
-                      time: '08:10 AM',
-                      title: 'Check In',
-                      subtitle: 'Actual Check in',
-                      status: 'Late: 10 Minutes',
-                      statusColor: Colors.red,
-                      svg: 'assets/svg/location.svg',
-                      isCurrentTime: _isCurrentTime('08:10 AM', currentTime),
-                      isActive: _isCurrentActive('08:10 AM', now),
+                    Consumer(
+                      builder: (context, ref, child) {
+                        return FutureBuilder<Map<String, dynamic>?>(
+                          future: ref
+                              .read(attendanceNotifierProvider.notifier)
+                              .getTodayAttendance(),
+                          builder: (context, snapshot) {
+                            final todayAttendance = snapshot.data;
+                            String checkInTime = 'Not Checked In';
+                            String status = '';
+                            Color statusColor = Colors.grey;
+                            bool isLate = false;
+                            int lateMinutes = 0;
+
+                            if (todayAttendance != null &&
+                                todayAttendance['check_in_time'] != null) {
+                              final checkInDateTime = DateTime.parse(
+                                todayAttendance['check_in_time'],
+                              );
+                              checkInTime =
+                                  '${checkInDateTime.hour.toString().padLeft(2, '0')}:${checkInDateTime.minute.toString().padLeft(2, '0')} ${checkInDateTime.hour >= 12 ? 'PM' : 'AM'}';
+
+                              // Use server-calculated lateness from database
+                              final serverLateMinutes =
+                                  todayAttendance['minutes_late'] ?? 0;
+                              if (serverLateMinutes > 0) {
+                                isLate = true;
+                                lateMinutes = serverLateMinutes;
+                                status = 'Late: ${lateMinutes} Minutes';
+                                statusColor = Colors.red;
+                              } else {
+                                status = 'On Time';
+                                statusColor = Colors.green;
+                              }
+                            } else {
+                              status = 'Not Checked In';
+                              statusColor = Colors.grey;
+                            }
+
+                            return _TimelineItem(
+                              time: checkInTime,
+                              title: 'Check In',
+                              subtitle:
+                                  todayAttendance != null &&
+                                      todayAttendance['check_in_time'] != null
+                                  ? 'Actual Check in'
+                                  : 'Not Checked In',
+                              status: status,
+                              statusColor: statusColor,
+                              svg: 'assets/svg/location.svg',
+                              isCurrentTime: _isCurrentTime(
+                                checkInTime,
+                                currentTime,
+                              ),
+                              isActive: _isCurrentActive(checkInTime, now),
+                            );
+                          },
+                        );
+                      },
                     ),
                     _TimelineItem(
                       time: '12:05 PM',
@@ -702,9 +924,10 @@ class _TimelineItem extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 5),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isActive
+              color: (isActive || isCurrentTime)
                   ? AppColors.secondary
-                  : Colors.white, // Purple when active, white otherwise
+                  : Colors
+                        .white, // Purple when active or current time, white otherwise
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
@@ -727,9 +950,10 @@ class _TimelineItem extends StatelessWidget {
                       style: AppTextStyles.subhead.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-                        color: isActive
+                        color: (isActive || isCurrentTime)
                             ? Colors.white
-                            : Colors.black, // White text when active
+                            : Colors
+                                  .black, // White text when active or current time
                       ),
                     ),
                     if (extraDetail != null)
@@ -760,10 +984,10 @@ class _TimelineItem extends StatelessWidget {
                         child: Text(
                           status!,
                           style: TextStyle(
-                            color: isActive
+                            color: (isActive || isCurrentTime)
                                 ? Colors.white
                                 : Colors
-                                      .black, // White text when active, black when not
+                                      .black, // White text when active or current time, black when not
                             fontSize: 9,
                             fontWeight: FontWeight.w600,
                           ),
@@ -775,9 +999,10 @@ class _TimelineItem extends StatelessWidget {
                   svg,
                   width: 18,
                   height: 18,
-                  color: isActive
+                  color: (isActive || isCurrentTime)
                       ? Colors.white
-                      : Colors.black, // White icon when active, black when not
+                      : Colors
+                            .black, // White icon when active or current time, black when not
                 ),
               ],
             ),
