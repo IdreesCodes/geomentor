@@ -1,4 +1,4 @@
--- Fixed Attendance System Database Setup with Proper Timezone Handling
+-- Fixed Attendance System Database Setup
 -- Run this in your Supabase SQL Editor
 
 -- 1. Drop existing functions
@@ -7,28 +7,35 @@ DROP FUNCTION IF EXISTS mark_check_out(UUID, DOUBLE PRECISION, DOUBLE PRECISION,
 DROP FUNCTION IF EXISTS mark_check_in(UUID, DOUBLE PRECISION, DOUBLE PRECISION);
 DROP FUNCTION IF EXISTS mark_check_out(UUID, DOUBLE PRECISION, DOUBLE PRECISION);
 
--- 2. Create updated function to mark check-in with proper timezone handling
+-- 2. Create function that properly handles local time string
 CREATE OR REPLACE FUNCTION mark_check_in(
   user_uuid UUID,
   check_in_lat DOUBLE PRECISION,
   check_in_lng DOUBLE PRECISION,
-  device_check_in_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  device_check_in_time TEXT DEFAULT NOW()::TEXT
 )
 RETURNS JSON AS $$
 DECLARE
-  current_date DATE;
+  check_date DATE;
   late_minutes INTEGER;
   attendance_status TEXT;
   result JSON;
-  local_check_in_time TIMESTAMP WITH TIME ZONE;
+  target_time TIMESTAMP;
+  local_check_in_time TIMESTAMP;
 BEGIN
-  -- Convert device time to local timezone (assuming device is in local timezone)
-  -- The device sends UTC time, but we need to interpret it as local time
-  local_check_in_time := device_check_in_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Karachi';
-  current_date := DATE(local_check_in_time);
+  -- Parse the local time string (format: YYYY-MM-DDTHH:MM:SS)
+  local_check_in_time := device_check_in_time::TIMESTAMP;
+  check_date := DATE(local_check_in_time);
   
-  -- Calculate if late using local time (8:00 AM target)
-  late_minutes := calculate_late_minutes(local_check_in_time);
+  -- Calculate target time (8:00 AM on the same date)
+  target_time := check_date + INTERVAL '8 hours';
+  
+  -- Calculate minutes late
+  IF local_check_in_time > target_time THEN
+    late_minutes := EXTRACT(EPOCH FROM (local_check_in_time - target_time)) / 60;
+  ELSE
+    late_minutes := 0;
+  END IF;
   
   -- Determine status
   IF late_minutes > 0 THEN
@@ -37,7 +44,7 @@ BEGIN
     attendance_status := 'present';
   END IF;
   
-  -- Insert or update attendance record using local time
+  -- Insert or update attendance record
   INSERT INTO attendance (
     user_id, 
     date, 
@@ -48,7 +55,7 @@ BEGIN
     minutes_late
   ) VALUES (
     user_uuid, 
-    current_date, 
+    check_date, 
     local_check_in_time, 
     check_in_lat, 
     check_in_lng, 
@@ -76,34 +83,36 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. Create updated function to mark check-out with proper timezone handling
+-- 3. Create fixed function for check-out (resolves ambiguous column reference)
 CREATE OR REPLACE FUNCTION mark_check_out(
   user_uuid UUID,
   check_out_lat DOUBLE PRECISION,
   check_out_lng DOUBLE PRECISION,
-  device_check_out_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  device_check_out_time TEXT DEFAULT NOW()::TEXT
 )
 RETURNS JSON AS $$
 DECLARE
-  current_date DATE;
+  check_date DATE;
   work_hours DECIMAL(4,2);
   result JSON;
-  local_check_out_time TIMESTAMP WITH TIME ZONE;
+  local_check_out_time TIMESTAMP;
+  existing_check_in_time TIMESTAMP;
 BEGIN
-  -- Convert device time to local timezone
-  local_check_out_time := device_check_out_time AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Karachi';
-  current_date := DATE(local_check_out_time);
+  -- Parse the local time string
+  local_check_out_time := device_check_out_time::TIMESTAMP;
+  check_date := DATE(local_check_out_time);
   
-  -- Calculate work hours using local time
-  SELECT 
-    CASE 
-      WHEN check_in_time IS NOT NULL 
-      THEN EXTRACT(EPOCH FROM (local_check_out_time - check_in_time)) / 3600
-      ELSE 0 
-    END
-  INTO work_hours
+  -- Get existing check-in time to calculate work hours
+  SELECT check_in_time INTO existing_check_in_time
   FROM attendance 
-  WHERE user_id = user_uuid AND date = current_date;
+  WHERE user_id = user_uuid AND date = check_date;
+  
+  -- Calculate work hours
+  IF existing_check_in_time IS NOT NULL THEN
+    work_hours := EXTRACT(EPOCH FROM (local_check_out_time - existing_check_in_time)) / 3600;
+  ELSE
+    work_hours := 0;
+  END IF;
   
   -- Update attendance record
   UPDATE attendance 
@@ -113,7 +122,7 @@ BEGIN
     check_out_longitude = check_out_lng,
     total_work_hours = work_hours,
     updated_at = NOW()
-  WHERE user_id = user_uuid AND date = current_date;
+  WHERE user_id = user_uuid AND date = check_date;
   
   -- Return result
   result := json_build_object(
@@ -126,26 +135,5 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4. Update the calculate_late_minutes function to handle timezone properly
-CREATE OR REPLACE FUNCTION calculate_late_minutes(check_in_time TIMESTAMP WITH TIME ZONE)
-RETURNS INTEGER AS $$
-DECLARE
-  target_time TIMESTAMP WITH TIME ZONE;
-  late_minutes INTEGER;
-BEGIN
-  -- Set target check-in time to 8:00 AM on the same date in local timezone
-  target_time := DATE(check_in_time) + INTERVAL '8 hours';
-  
-  -- Calculate minutes late
-  IF check_in_time > target_time THEN
-    late_minutes := EXTRACT(EPOCH FROM (check_in_time - target_time)) / 60;
-  ELSE
-    late_minutes := 0;
-  END IF;
-  
-  RETURN late_minutes;
-END;
-$$ LANGUAGE plpgsql;
-
--- 5. Success message
-SELECT 'Fixed attendance functions with proper timezone handling completed successfully!' as status; 
+-- 4. Success message
+SELECT 'Fixed attendance functions completed successfully!' as status; 

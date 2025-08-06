@@ -301,4 +301,76 @@ class AttendanceService {
       return false;
     }
   }
+
+  // Get attendance for a specific date
+  Future<Map<String, dynamic>?> getAttendanceForDate(String date) async {
+    try {
+      print('📝 AttendanceService: Getting attendance for date: $date');
+
+      final currentUser = _supabaseService.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // First, let's see what's actually in the database
+      final allRecords = await _supabaseService.client
+          .from('attendance')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('date', ascending: false)
+          .limit(5);
+
+      print('🔍 All attendance records for user: $allRecords');
+
+      // Now try to get the specific date
+      final response = await _supabaseService.client
+          .from('attendance')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .eq('date', date)
+          .maybeSingle();
+
+      if (response != null) {
+        print('✅ AttendanceService: Attendance for $date: $response');
+        return response;
+      }
+
+      print('📝 AttendanceService: No attendance record for $date');
+      return null;
+    } catch (error) {
+      if (error.toString().contains('No rows returned')) {
+        print('📝 AttendanceService: No attendance record for $date');
+        return null;
+      }
+      print('❌ AttendanceService: Error getting attendance for $date: $error');
+      rethrow;
+    }
+  }
+
+  // Get recent attendance records
+  Future<List<Map<String, dynamic>>> getRecentAttendanceRecords() async {
+    try {
+      print('📝 AttendanceService: Getting recent attendance records...');
+
+      final currentUser = _supabaseService.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final response = await _supabaseService.client
+          .from('attendance')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('date', ascending: false)
+          .limit(10);
+
+      print('✅ AttendanceService: Recent attendance records: $response');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (error) {
+      print(
+        '❌ AttendanceService: Error getting recent attendance records: $error',
+      );
+      rethrow;
+    }
+  }
 }

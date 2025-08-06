@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/supabase_service.dart';
+import 'background_location_service.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -31,8 +32,22 @@ class LocationService {
     // Request permissions
     await _requestPermissions();
 
+    // Initialize background service
+    await _initializeBackgroundService();
+
     // Check initial location
     await _checkCurrentLocation();
+  }
+
+  // Initialize background location service
+  Future<void> _initializeBackgroundService() async {
+    try {
+      final backgroundService = BackgroundLocationService();
+      await backgroundService.initialize();
+      print('✅ LocationService: Background service initialized');
+    } catch (error) {
+      print('❌ LocationService: Error initializing background service: $error');
+    }
   }
 
   // Request location permissions
@@ -197,6 +212,30 @@ class LocationService {
       }
 
       print('👤 LocationService: User ID: ${currentUser.id}');
+
+      // Check today's attendance first
+      final todayAttendance = await supabaseService.client
+          .from('attendance')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .eq('date', DateTime.now().toIso8601String().split('T')[0])
+          .maybeSingle();
+
+      // Check if already checked in today
+      if (todayAttendance != null && todayAttendance['check_in_time'] != null) {
+        print('📝 LocationService: Already checked in today');
+
+        // Also check if user has already checked out today
+        if (todayAttendance['check_out_time'] != null) {
+          print(
+            '📝 LocationService: Already checked out today, skipping check-in',
+          );
+          return;
+        }
+
+        return;
+      }
+
       print('📞 LocationService: Calling Supabase API: mark_check_in()');
 
       // Mark check-in using the new attendance system
@@ -299,6 +338,45 @@ class LocationService {
   Future<void> checkAttendanceManually() async {
     print('📍 LocationService: Manual attendance check...');
     await _checkCurrentLocation();
+  }
+
+  // Start background location monitoring
+  Future<void> startBackgroundMonitoring() async {
+    try {
+      print('📍 LocationService: Starting background monitoring...');
+      final backgroundService = BackgroundLocationService();
+      await backgroundService.startBackgroundMonitoring();
+      print('✅ LocationService: Background monitoring started');
+    } catch (error) {
+      print('❌ LocationService: Error starting background monitoring: $error');
+      rethrow;
+    }
+  }
+
+  // Stop background location monitoring
+  Future<void> stopBackgroundMonitoring() async {
+    try {
+      print('📍 LocationService: Stopping background monitoring...');
+      final backgroundService = BackgroundLocationService();
+      await backgroundService.stopBackgroundMonitoring();
+      print('✅ LocationService: Background monitoring stopped');
+    } catch (error) {
+      print('❌ LocationService: Error stopping background monitoring: $error');
+      rethrow;
+    }
+  }
+
+  // Check if background monitoring is active
+  Future<bool> isBackgroundMonitoringActive() async {
+    try {
+      final backgroundService = BackgroundLocationService();
+      return await backgroundService.isBackgroundMonitoringActive();
+    } catch (error) {
+      print(
+        '❌ LocationService: Error checking background monitoring status: $error',
+      );
+      return false;
+    }
   }
 
   // Get current location status

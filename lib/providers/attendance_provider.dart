@@ -137,6 +137,14 @@ class AttendanceNotifier extends StateNotifier<AsyncValue<AttendanceData?>> {
   Future<Map<String, dynamic>?> getTodayAttendance() async {
     return await _attendanceService.getTodayAttendance();
   }
+
+  Future<Map<String, dynamic>?> getAttendanceForDate(String date) async {
+    return await _attendanceService.getAttendanceForDate(date);
+  }
+
+  Future<List<Map<String, dynamic>>> getRecentAttendanceRecords() async {
+    return await _attendanceService.getRecentAttendanceRecords();
+  }
 }
 
 final attendanceNotifierProvider =
