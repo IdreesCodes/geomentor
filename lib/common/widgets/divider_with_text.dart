@@ -8,13 +8,13 @@ class DividerWithText extends StatelessWidget {
   final FontWeight fontWeight;
 
   const DividerWithText({
-    Key? key,
+    super.key,
     required this.text,
     this.textColor,
     this.dividerColor,
     this.fontSize = 14,
     this.fontWeight = FontWeight.w600,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

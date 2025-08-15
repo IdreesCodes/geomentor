@@ -9,12 +9,12 @@ class HomeFeatureCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const HomeFeatureCard({
-    Key? key,
+    super.key,
     required this.icon,
     required this.title,
     required this.description,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -8,11 +8,11 @@ class PermissionDialog extends StatelessWidget {
   final VoidCallback? onRetry;
 
   const PermissionDialog({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
     this.onRetry,
-  }) : super(key: key);
+  });
 
   static Future<void> showLocationPermissionDialog(BuildContext context) async {
     return showDialog(

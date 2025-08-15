@@ -8,13 +8,13 @@ class FormCard extends StatelessWidget {
   final List<BoxShadow>? boxShadow;
 
   const FormCard({
-    Key? key,
+    super.key,
     required this.child,
     this.padding,
     this.borderRadius = 24,
     this.backgroundColor,
     this.boxShadow,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -6,8 +6,7 @@ class AttendancePopup extends StatelessWidget {
   final String message;
   final VoidCallback? onDismiss;
 
-  const AttendancePopup({Key? key, required this.message, this.onDismiss})
-    : super(key: key);
+  const AttendancePopup({super.key, required this.message, this.onDismiss});
 
   @override
   Widget build(BuildContext context) {

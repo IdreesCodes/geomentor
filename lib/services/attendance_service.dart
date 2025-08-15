@@ -37,6 +37,7 @@ class AttendanceService {
           'user_uuid': currentUser.id,
           'check_in_lat': latitude,
           'check_in_lng': longitude,
+          'device_check_in_time': DateTime.now().toIso8601String(),
         },
       );
 
@@ -80,6 +81,7 @@ class AttendanceService {
           'user_uuid': currentUser.id,
           'check_out_lat': latitude,
           'check_out_lng': longitude,
+          'device_check_out_time': DateTime.now().toIso8601String(),
         },
       );
 
@@ -226,22 +228,33 @@ class AttendanceService {
         throw Exception('User not authenticated');
       }
 
-      final response = await _supabaseService.client
+      // Compute local day boundaries and query by check_in_time for TZ safety
+      final nowLocal = DateTime.now().toLocal();
+      final startLocal = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
+      final endLocal = startLocal.add(const Duration(days: 1));
+      final startUtc = startLocal.toUtc().toIso8601String();
+      final endUtc = endLocal.toUtc().toIso8601String();
+
+      final todayList = await _supabaseService.client
           .from('attendance')
           .select('*')
           .eq('user_id', currentUser.id)
-          .eq('date', DateTime.now().toIso8601String().split('T')[0])
-          .single();
+          .gte('check_in_time', startUtc)
+          .lt('check_in_time', endUtc)
+          .order('check_in_time', ascending: false)
+          .limit(1);
 
-      print('✅ AttendanceService: Today\'s attendance: $response');
-      return response;
-    } catch (error) {
-      if (error.toString().contains('No rows returned')) {
-        print('📝 AttendanceService: No attendance record for today');
-        return null;
+      if (todayList.isNotEmpty) {
+        final today = Map<String, dynamic>.from(todayList.first);
+        print('✅ AttendanceService: Today (TZ-safe) attendance: $today');
+        return today;
       }
+
+      print('✅ AttendanceService: Today\'s attendance: null');
+      return null;
+    } catch (error) {
       print('❌ AttendanceService: Error getting today\'s attendance: $error');
-      rethrow;
+      return null;
     }
   }
 

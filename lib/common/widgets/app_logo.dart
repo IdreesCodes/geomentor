@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/app_colors.dart';
 
 class AppLogo extends StatelessWidget {
@@ -11,14 +10,14 @@ class AppLogo extends StatelessWidget {
   final List<BoxShadow>? boxShadow;
 
   const AppLogo({
-    Key? key,
+    super.key,
     this.size = 80,
     this.iconSize = 40,
     this.borderRadius = 20,
     this.backgroundColor,
     this.iconColor,
     this.boxShadow,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,11 +38,11 @@ class AppLogo extends StatelessWidget {
             ],
       ),
       child: Center(
-        child: SvgPicture.asset(
-          'assets/svg/star.svg',
+        child: Image.asset(
+          'assets/images/GeoMentor.png',
           width: iconSize,
           height: iconSize,
-          color: iconColor ?? AppColors.secondary,
+          fit: BoxFit.contain,
         ),
       ),
     );

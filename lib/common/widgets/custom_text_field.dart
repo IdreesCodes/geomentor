@@ -13,7 +13,7 @@ class CustomTextField extends StatefulWidget {
   final bool readOnly;
 
   const CustomTextField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.label,
     required this.hint,
@@ -23,7 +23,7 @@ class CustomTextField extends StatefulWidget {
     this.validator,
     this.onTap,
     this.readOnly = false,
-  }) : super(key: key);
+  });
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();

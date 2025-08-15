@@ -13,7 +13,7 @@ class PrimaryButton extends StatelessWidget {
   final Color? textColor;
 
   const PrimaryButton({
-    Key? key,
+    super.key,
     required this.text,
     this.onPressed,
     this.isLoading = false,
@@ -22,7 +22,7 @@ class PrimaryButton extends StatelessWidget {
     this.fontSize = 18,
     this.backgroundColor,
     this.textColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

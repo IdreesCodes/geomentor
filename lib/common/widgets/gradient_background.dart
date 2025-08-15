@@ -7,11 +7,11 @@ class GradientBackground extends StatelessWidget {
   final bool useSafeArea;
 
   const GradientBackground({
-    Key? key,
+    super.key,
     required this.child,
     this.padding,
     this.useSafeArea = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

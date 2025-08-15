@@ -143,6 +143,11 @@ class LocationService {
       bool currentlyAtCollege = distance <= ATTENDANCE_RADIUS;
       print('📍 LocationService: Currently at college: $currentlyAtCollege');
 
+      // Compute IST now
+      final DateTime nowIst = DateTime.now().toUtc().add(
+        const Duration(hours: 5, minutes: 30),
+      );
+
       if (currentlyAtCollege && !_isAtCollege) {
         // Just arrived at college
         print('🎯 LocationService: ==========================================');
@@ -169,6 +174,35 @@ class LocationService {
         print(
           '📍 LocationService: At college (distance: ${distance.toStringAsFixed(2)}m)',
         );
+        // If past 4 PM IST and still checked in without checkout, auto checkout
+        try {
+          final supabase = SupabaseService();
+          final user = supabase.currentUser;
+          if (user != null && nowIst.hour >= 16) {
+            final todayAttendance = await supabase.client
+                .from('attendance')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('date', DateTime.now().toIso8601String().split('T')[0])
+                .maybeSingle();
+            final hasIn =
+                todayAttendance != null &&
+                todayAttendance['check_in_time'] != null;
+            final hasOut =
+                todayAttendance != null &&
+                todayAttendance['check_out_time'] != null;
+            if (hasIn && !hasOut) {
+              print(
+                '🎯 LocationService: After 4 PM IST while inside college — auto checkout',
+              );
+              await _markDeparture();
+            }
+          }
+        } catch (e) {
+          print(
+            '❌ LocationService: Error during 4 PM IST auto checkout check: $e',
+          );
+        }
       } else {
         print(
           '📍 LocationService: Not at college (distance: ${distance.toStringAsFixed(2)}m)',
@@ -213,13 +247,45 @@ class LocationService {
 
       print('👤 LocationService: User ID: ${currentUser.id}');
 
-      // Check today's attendance first
-      final todayAttendance = await supabaseService.client
+      // Check today's attendance using local-day time window (TZ-safe)
+      final nowLocal = DateTime.now().toLocal();
+      final startLocal = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
+      final endLocal = startLocal.add(const Duration(days: 1));
+      final startUtc = startLocal.toUtc().toIso8601String();
+      final endUtc = endLocal.toUtc().toIso8601String();
+
+      Map<String, dynamic>? todayAttendance;
+      final todayList = await supabaseService.client
           .from('attendance')
           .select('*')
           .eq('user_id', currentUser.id)
-          .eq('date', DateTime.now().toIso8601String().split('T')[0])
-          .maybeSingle();
+          .gte('check_in_time', startUtc)
+          .lt('check_in_time', endUtc)
+          .order('check_in_time', ascending: false)
+          .limit(1);
+      if (todayList.isNotEmpty) {
+        todayAttendance = Map<String, dynamic>.from(todayList.first);
+      }
+
+      // Also check latest record for active session (checked in but not out)
+      if (todayAttendance == null) {
+        final latestList = await supabaseService.client
+            .from('attendance')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('updated_at', ascending: false)
+            .limit(1);
+        if (latestList.isNotEmpty) {
+          final latest = Map<String, dynamic>.from(latestList.first);
+          if (latest['check_in_time'] != null &&
+              latest['check_out_time'] == null) {
+            print(
+              '📝 LocationService: Active session detected, skipping duplicate check-in',
+            );
+            return;
+          }
+        }
+      }
 
       // Check if already checked in today
       if (todayAttendance != null && todayAttendance['check_in_time'] != null) {
@@ -288,6 +354,28 @@ class LocationService {
       }
 
       print('👤 LocationService: User ID: ${currentUser.id}');
+      // Check today's attendance (avoid double checkout)
+      final todayAttendance = await supabaseService.client
+          .from('attendance')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .eq('date', DateTime.now().toIso8601String().split('T')[0])
+          .maybeSingle();
+
+      final hasCheckedIn =
+          todayAttendance != null && todayAttendance['check_in_time'] != null;
+      final hasCheckedOut =
+          todayAttendance != null && todayAttendance['check_out_time'] != null;
+
+      if (!hasCheckedIn) {
+        print('📝 LocationService: No check-in for today; skipping check-out');
+        return;
+      }
+      if (hasCheckedOut) {
+        print('📝 LocationService: Already checked out; skipping check-out');
+        return;
+      }
+
       print('📞 LocationService: Calling Supabase API: mark_check_out()');
 
       // Mark check-out using the new attendance system

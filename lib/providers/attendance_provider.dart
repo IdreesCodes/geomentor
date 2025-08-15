@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/attendance_service.dart';
-import '../services/supabase_service.dart';
 import 'auth_provider.dart';
 
 final attendanceServiceProvider = Provider<AttendanceService>((ref) {
@@ -91,7 +90,7 @@ class AttendanceNotifier extends StateNotifier<AsyncValue<AttendanceData?>> {
     required double longitude,
   }) async {
     try {
-      final result = await _attendanceService.markCheckIn(
+      await _attendanceService.markCheckIn(
         latitude: latitude,
         longitude: longitude,
       );
@@ -111,7 +110,7 @@ class AttendanceNotifier extends StateNotifier<AsyncValue<AttendanceData?>> {
     required double longitude,
   }) async {
     try {
-      final result = await _attendanceService.markCheckOut(
+      await _attendanceService.markCheckOut(
         latitude: latitude,
         longitude: longitude,
       );

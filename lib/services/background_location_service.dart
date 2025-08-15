@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter/material.dart';
+// Removed unused: dart:convert, flutter/material.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -295,39 +293,81 @@ Future<void> _performLocationCheck() async {
       '📍 WorkManager: Distance from college: ${distance.toStringAsFixed(2)}m',
     );
 
-    // Check if within attendance radius
-    if (distance <= BackgroundLocationService.ATTENDANCE_RADIUS) {
-      print(
-        '🎯 WorkManager: User is at college! Checking if attendance needed...',
-      );
+    // Get current user
+    final currentUser = supabaseService.currentUser;
+    if (currentUser == null) {
+      print('❌ WorkManager: No user logged in');
+      return;
+    }
 
-      // Get current user
-      final currentUser = supabaseService.currentUser;
-      if (currentUser == null) {
-        print('❌ WorkManager: No user logged in');
-        return;
+    // Load today's attendance by local-day window (TZ-safe)
+    final nowLocal = DateTime.now().toLocal();
+    final startLocal = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
+    final endLocal = startLocal.add(const Duration(days: 1));
+    final startUtc = startLocal.toUtc().toIso8601String();
+    final endUtc = endLocal.toUtc().toIso8601String();
+
+    Map<String, dynamic>? todayAttendance;
+    final todayList = await supabaseService.client
+        .from('attendance')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .gte('check_in_time', startUtc)
+        .lt('check_in_time', endUtc)
+        .order('check_in_time', ascending: false)
+        .limit(1);
+    if (todayList.isNotEmpty) {
+      todayAttendance = Map<String, dynamic>.from(todayList.first);
+    }
+
+    final activeList = await supabaseService.client
+        .from('attendance')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('updated_at', ascending: false)
+        .limit(1);
+    Map<String, dynamic>? active;
+    if (activeList.isNotEmpty) {
+      final candidate = Map<String, dynamic>.from(activeList.first);
+      if (candidate['check_in_time'] != null &&
+          candidate['check_out_time'] == null) {
+        active = candidate;
       }
+    }
 
-      // Check today's attendance status first
-      final todayAttendance = await supabaseService.client
-          .from('attendance')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .eq('date', DateTime.now().toIso8601String().split('T')[0])
-          .maybeSingle();
+    final bool hasCheckedIn =
+        (todayAttendance != null && todayAttendance['check_in_time'] != null) ||
+        active != null;
+    final bool hasCheckedOut =
+        todayAttendance != null && todayAttendance['check_out_time'] != null;
 
-      // Only mark attendance if not already checked in OR if checked in but not checked out
-      if (todayAttendance == null || todayAttendance['check_in_time'] == null) {
+    // Compute current IST time
+    final DateTime nowIst = DateTime.now().toUtc().add(
+      const Duration(hours: 5, minutes: 30),
+    );
+
+    // If inside radius: ensure check-in; also auto checkout at 4 PM IST if still inside
+    if (distance <= BackgroundLocationService.ATTENDANCE_RADIUS) {
+      print('🎯 WorkManager: User is at college!');
+      if (!hasCheckedIn) {
         print('🎯 WorkManager: No check-in today, marking attendance...');
         await _markAttendance(position);
-      } else if (todayAttendance['check_out_time'] == null) {
+      } else if (!hasCheckedOut && nowIst.hour >= 16) {
         print(
-          '🎯 WorkManager: Already checked in but not checked out, skipping...',
+          '🎯 WorkManager: After 4 PM IST and still at college — auto checkout',
         );
+        await _markCheckOut(position);
       } else {
         print(
-          '🎯 WorkManager: Already completed attendance for today, skipping...',
+          '🎯 WorkManager: Attendance state OK (checkedIn: $hasCheckedIn, checkedOut: $hasCheckedOut)',
         );
+      }
+    } else {
+      // Outside radius: if checked in and not checked out, auto-checkout
+      print('🎯 WorkManager: User is outside college radius');
+      if (hasCheckedIn && !hasCheckedOut) {
+        print('🎯 WorkManager: Auto checkout due to leaving radius');
+        await _markCheckOut(position);
       }
     }
   } catch (error) {
@@ -351,24 +391,37 @@ Future<void> _markAttendance(Position position) async {
       return;
     }
 
-    // Check if already checked in today
+    // Check if already checked in today (or any active session)
+    final todayStr = DateTime.now().toLocal().toIso8601String().split('T')[0];
     final todayAttendance = await supabaseService.client
         .from('attendance')
         .select('*')
         .eq('user_id', currentUser.id)
-        .eq('date', DateTime.now().toIso8601String().split('T')[0])
+        .eq('date', todayStr)
         .maybeSingle();
 
     if (todayAttendance != null && todayAttendance['check_in_time'] != null) {
       print('📝 WorkManager: Already checked in today');
-
-      // Also check if user has already checked out today
       if (todayAttendance['check_out_time'] != null) {
         print('📝 WorkManager: Already checked out today, skipping check-in');
+      }
+      return;
+    }
+
+    final latestList = await supabaseService.client
+        .from('attendance')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('updated_at', ascending: false)
+        .limit(1);
+    if (latestList.isNotEmpty) {
+      final latest = Map<String, dynamic>.from(latestList.first);
+      if (latest['check_in_time'] != null && latest['check_out_time'] == null) {
+        print(
+          '📝 WorkManager: Active session detected, skipping duplicate check-in',
+        );
         return;
       }
-
-      return;
     }
 
     // Mark check-in
@@ -387,6 +440,75 @@ Future<void> _markAttendance(Position position) async {
     await _showAttendanceNotification();
   } catch (error) {
     print('❌ WorkManager: Error marking attendance: $error');
+  }
+}
+
+// Mark check-out from background task
+Future<void> _markCheckOut(Position position) async {
+  try {
+    print('🎯 WorkManager: Marking check-out...');
+
+    // Initialize Supabase
+    final supabaseService = SupabaseService();
+    await supabaseService.initialize();
+
+    // Get current user
+    final currentUser = supabaseService.currentUser;
+    if (currentUser == null) {
+      print('❌ WorkManager: No user logged in');
+      return;
+    }
+
+    // Check today's attendance status first
+    final todayAttendance = await supabaseService.client
+        .from('attendance')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('date', DateTime.now().toIso8601String().split('T')[0])
+        .maybeSingle();
+
+    // Only mark check-out if checked in and not yet checked out
+    if (todayAttendance == null || todayAttendance['check_in_time'] == null) {
+      print('🎯 WorkManager: No check-in today; skipping check-out');
+      return;
+    }
+    if (todayAttendance['check_out_time'] != null) {
+      print('🎯 WorkManager: Already checked out; skipping check-out');
+      return;
+    }
+
+    final response = await supabaseService.client.rpc(
+      'mark_check_out',
+      params: {
+        'user_uuid': currentUser.id,
+        'check_out_lat': position.latitude,
+        'check_out_lng': position.longitude,
+      },
+    );
+
+    print('✅ WorkManager: Check-out marked successfully: $response');
+
+    // Show notification
+    final notifications = FlutterLocalNotificationsPlugin();
+    const androidDetails = AndroidNotificationDetails(
+      'attendance_channel',
+      'Attendance',
+      channelDescription: 'Attendance notifications',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+    await notifications.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      'Auto Check-out',
+      'You have been automatically checked out.',
+      notificationDetails,
+    );
+  } catch (error) {
+    print('❌ WorkManager: Error marking check-out: $error');
   }
 }
 

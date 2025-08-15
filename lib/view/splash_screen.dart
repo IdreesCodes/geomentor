@@ -5,7 +5,7 @@ import '../utils/app_colors.dart';
 import '../utils/app_text_styles.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   _SplashScreenState createState() => _SplashScreenState();

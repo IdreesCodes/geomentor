@@ -9,6 +9,7 @@ class SupabaseService {
   SupabaseService._internal();
 
   late final SupabaseClient _client;
+  bool _initialized = false;
 
   Future<void> initialize() async {
     print('🔧 SupabaseService: Initializing Supabase...');
@@ -16,12 +17,19 @@ class SupabaseService {
     print(
       '🔧 SupabaseService: Anon Key: ${SupabaseConfig.supabaseAnonKey.substring(0, 20)}...',
     );
+    // Make initialization idempotent (WorkManager/background isolates may call multiple times)
+    if (_initialized) {
+      print('🔧 SupabaseService: Already initialized, reusing existing client');
+      _client = Supabase.instance.client;
+      return;
+    }
 
     await Supabase.initialize(
       url: SupabaseConfig.supabaseUrl,
       anonKey: SupabaseConfig.supabaseAnonKey,
     );
     _client = Supabase.instance.client;
+    _initialized = true;
 
     print('🔧 SupabaseService: Initialization complete');
     print('🔧 SupabaseService: Client initialized successfully');
@@ -173,7 +181,7 @@ class SupabaseService {
         }
       }
 
-      throw error;
+      rethrow;
     }
   }
 
